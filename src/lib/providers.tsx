@@ -6,9 +6,11 @@ import { mainnet, polygon, arbitrum, optimism, base } from "wagmi/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "@rainbow-me/rainbowkit/styles.css";
 
+const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? "fallback-id";
+
 const config = getDefaultConfig({
   appName: "GitDapps",
-  projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID!,
+  projectId,
   chains: [mainnet, polygon, arbitrum, optimism, base],
   ssr: true,
 });
