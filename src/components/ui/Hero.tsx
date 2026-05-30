@@ -1,5 +1,6 @@
 "use client";
 
+import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useCountUp } from "@/hooks/useCountUp";
 import FloatingWallets from "@/components/ui/FloatingWallets";
 
@@ -58,12 +59,17 @@ export default function Hero() {
 
       {/* CTA Buttons */}
       <div className="mt-10 flex flex-col sm:flex-row gap-4 items-center">
-        <button className="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-8 py-3 rounded-full text-sm transition-all duration-200 shadow-lg shadow-blue-600/30 hover:shadow-blue-500/50">
-          Connect Wallet
-        </button>
-        <button className="border border-white/20 hover:border-white/40 text-white font-semibold px-8 py-3 rounded-full text-sm transition-all duration-200 bg-white/5 hover:bg-white/10">
+        <ConnectButton
+          label="Connect Wallet"
+          accountStatus="full"
+          chainStatus="full"
+          showBalance={true}
+        />
+        
+          <a href="#features"
+          className="border border-white/20 hover:border-white/40 text-white font-semibold px-8 py-3 rounded-full text-sm transition-all duration-200 bg-white/5 hover:bg-white/10">
           Explore Features
-        </button>
+        </a>
       </div>
 
       {/* Live Animated Stats */}

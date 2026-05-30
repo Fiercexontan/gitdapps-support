@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { FaGithub } from "react-icons/fa";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 export default function Navbar() {
   return (
@@ -13,21 +16,24 @@ export default function Navbar() {
 
       {/* Nav Links */}
       <div className="hidden md:flex items-center gap-8 text-sm text-gray-400">
-        <Link href="#features" className="hover:text-white transition-colors">
+        <Link href="/#features" className="hover:text-white transition-colors">
           Features
         </Link>
-        <Link href="#about" className="hover:text-white transition-colors">
+        <Link href="/about" className="hover:text-white transition-colors">
           About
         </Link>
-        <Link href="#docs" className="hover:text-white transition-colors">
+        <Link href="/docs" className="hover:text-white transition-colors">
           Docs
         </Link>
       </div>
-
-      {/* Connect Wallet Button */}
-      <button className="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-5 py-2 rounded-full transition-all duration-200">
-        Connect Wallet
-      </button>
+      
+      {/* RainbowKit Connect Button */}
+      <ConnectButton
+        label="Connect Wallet"
+        accountStatus="avatar"
+        chainStatus="icon"
+        showBalance={true}
+      />
 
     </nav>
   );
