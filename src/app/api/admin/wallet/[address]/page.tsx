@@ -76,11 +76,9 @@ export default function WalletDetailPage() {
   }, [walletAddress]);
 
   const copyAddress = () => {
-    if (walletAddress) {
-      navigator.clipboard.writeText(walletAddress);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+    navigator.clipboard.writeText(walletAddress);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const shortAddress = (addr: string) =>
@@ -108,7 +106,7 @@ export default function WalletDetailPage() {
                 Wallet Detail
               </p>
               <h1 className="text-2xl md:text-3xl font-extrabold text-white font-mono">
-                {walletAddress ? shortAddress(walletAddress) : ""}
+                {shortAddress(walletAddress)}
               </h1>
             </div>
             <button
