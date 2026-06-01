@@ -46,8 +46,7 @@ export function useSIWE() {
       const result = await verifyRes.json();
 
       if (result.ok) {
-        router.push("/dashboard");
-        router.refresh();
+        window.location.href = "/dashboard";
       } else {
         setError("Verification failed. Please try again.");
       }
