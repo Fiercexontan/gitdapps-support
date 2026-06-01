@@ -6,17 +6,36 @@ import { useRouter } from "next/navigation";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { useSIWE } from "@/hooks/useSIWE";
+import Image from "next/image";
 import {
   FaWallet,
   FaArrowRightFromBracket,
   FaCopy,
   FaCheck,
   FaCircleNotch,
+  FaEthereum,
+  FaImage,
 } from "react-icons/fa6";
 
 interface SessionData {
   isLoggedIn: boolean;
   address?: string;
+}
+
+interface Token {
+  address: string;
+  symbol: string;
+  name: string;
+  logo: string | null;
+  balance: string;
+}
+
+interface NFT {
+  tokenId: string;
+  name: string;
+  collection: string;
+  image: string | null;
+  contractAddress: string;
 }
 
 const chains: Record<number, string> = {
@@ -27,12 +46,21 @@ const chains: Record<number, string> = {
   8453: "Base",
 };
 
+function shortAddress(addr: string) {
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+}
+
 export default function DashboardPage() {
   const { address, chainId, isConnected } = useAccount();
   const { signIn, signOut, loading, error } = useSIWE();
   const [session, setSession] = useState<SessionData | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [ethBalance, setEthBalance] = useState<string | null>(null);
+  const [tokens, setTokens] = useState<Token[]>([]);
+  const [nfts, setNfts] = useState<NFT[]>([]);
+  const [loadingAssets, setLoadingAssets] = useState(false);
+  const [activeTab, setActiveTab] = useState<"tokens" | "nfts">("tokens");
   const router = useRouter();
 
   useEffect(() => {
@@ -45,6 +73,37 @@ export default function DashboardPage() {
     fetchSession();
   }, []);
 
+  useEffect(() => {
+    if (session?.isLoggedIn) {
+      fetchAssets();
+      fetchNFTs();
+    }
+  }, [session]);
+
+  const fetchAssets = async () => {
+    setLoadingAssets(true);
+    try {
+      const res = await fetch("/api/assets");
+      const data = await res.json();
+      setEthBalance(data.ethBalance);
+      setTokens(data.tokens || []);
+    } catch {
+      console.error("Failed to fetch assets");
+    } finally {
+      setLoadingAssets(false);
+    }
+  };
+
+  const fetchNFTs = async () => {
+    try {
+      const res = await fetch("/api/nfts");
+      const data = await res.json();
+      setNfts(data.nfts || []);
+    } catch {
+      console.error("Failed to fetch NFTs");
+    }
+  };
+
   const copyAddress = () => {
     if (address) {
       navigator.clipboard.writeText(address);
@@ -53,10 +112,6 @@ export default function DashboardPage() {
     }
   };
 
-  const shortAddress = (addr: string) =>
-    `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-
-  // Loading state
   if (checkingSession) {
     return (
       <main className="min-h-screen bg-black text-white flex items-center justify-center">
@@ -65,7 +120,6 @@ export default function DashboardPage() {
     );
   }
 
-  // Not connected — show connect prompt
   if (!isConnected) {
     return (
       <main className="min-h-screen bg-black text-white">
@@ -87,7 +141,6 @@ export default function DashboardPage() {
     );
   }
 
-  // Connected but not signed in
   if (!session?.isLoggedIn) {
     return (
       <main className="min-h-screen bg-black text-white">
@@ -103,9 +156,7 @@ export default function DashboardPage() {
             Your wallet is connected. Sign a message to verify ownership and
             access your dashboard. This does not cost any gas.
           </p>
-          {error && (
-            <p className="text-red-400 text-sm mb-4">{error}</p>
-          )}
+          {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
           <button
             onClick={signIn}
             disabled={loading}
@@ -124,11 +175,9 @@ export default function DashboardPage() {
     );
   }
 
-  // Fully signed in — show dashboard
   return (
     <main className="min-h-screen bg-black text-white">
       <Navbar />
-
       <section className="pt-32 pb-24 px-6">
         <div className="max-w-5xl mx-auto">
 
@@ -151,10 +200,8 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {/* Wallet Card */}
+          {/* Wallet + ETH Balance */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
-
-            {/* Address */}
             <div className="col-span-2 p-6 rounded-2xl bg-white/[0.03] border border-white/10">
               <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-3">
                 Connected Wallet
@@ -171,7 +218,7 @@ export default function DashboardPage() {
                 </div>
                 <button
                   onClick={copyAddress}
-                  className="ml-auto flex items-center gap-1.5 text-gray-500 hover:text-white text-xs border border-white/10 hover:border-white/30 px-3 py-1.5 rounded-full transition-all duration-200"
+                  className="ml-auto flex items-center gap-1.5 text-gray-500 hover:text-white text-xs border border-white/10 hover:border-white/30 px-3 py-1.5 rounded-full transition-all"
                 >
                   {copied ? <FaCheck className="text-green-400" /> : <FaCopy />}
                   {copied ? "Copied" : "Copy"}
@@ -179,64 +226,152 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Status */}
+            {/* ETH Balance */}
             <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/10">
               <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-3">
-                Status
+                ETH Balance
               </p>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-green-400 text-sm font-medium">Active</span>
-              </div>
-              <p className="text-gray-600 text-xs">
-                Authenticated via SIWE
-              </p>
-              <p className="text-gray-600 text-xs mt-1">
-                Session valid for 7 days
-              </p>
+              {loadingAssets ? (
+                <FaCircleNotch className="animate-spin text-blue-400" />
+              ) : (
+                <div className="flex items-center gap-2">
+                  <FaEthereum className="text-blue-400 text-xl" />
+                  <p className="text-white font-bold text-xl">
+                    {ethBalance ?? "0.000000"}
+                  </p>
+                </div>
+              )}
+              <p className="text-gray-600 text-xs mt-1">Ethereum Mainnet</p>
             </div>
           </div>
 
-          {/* Info Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {[
-              {
-                label: "Authentication",
-                value: "Sign In With Ethereum",
-                sub: "EIP-4361 Standard",
-                color: "text-blue-400",
-              },
-              {
-                label: "Network",
-                value: chainId ? chains[chainId] || `Chain ${chainId}` : "—",
-                sub: "Active chain",
-                color: "text-purple-400",
-              },
-              {
-                label: "Session",
-                value: "Secure",
-                sub: "iron-session encrypted",
-                color: "text-green-400",
-              },
-            ].map((card, i) => (
-              <div
-                key={i}
-                className="p-5 rounded-2xl bg-white/[0.03] border border-white/10"
-              >
-                <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-3">
-                  {card.label}
-                </p>
-                <p className={`font-bold text-base ${card.color}`}>
-                  {card.value}
-                </p>
-                <p className="text-gray-600 text-xs mt-1">{card.sub}</p>
-              </div>
-            ))}
+          {/* Tabs */}
+          <div className="flex items-center gap-2 mb-6">
+            <button
+              onClick={() => setActiveTab("tokens")}
+              className={`px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200 ${
+                activeTab === "tokens"
+                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
+                  : "bg-white/5 text-gray-400 hover:text-white border border-white/10"
+              }`}
+            >
+              Tokens
+            </button>
+            <button
+              onClick={() => setActiveTab("nfts")}
+              className={`px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200 ${
+                activeTab === "nfts"
+                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
+                  : "bg-white/5 text-gray-400 hover:text-white border border-white/10"
+              }`}
+            >
+              NFTs
+            </button>
           </div>
+
+          {/* Tokens Tab */}
+          {activeTab === "tokens" && (
+            <div className="rounded-2xl bg-white/[0.03] border border-white/10 overflow-hidden">
+              {loadingAssets ? (
+                <div className="flex items-center justify-center py-16">
+                  <FaCircleNotch className="animate-spin text-blue-500 text-2xl" />
+                </div>
+              ) : tokens.length === 0 ? (
+                <div className="text-center py-16">
+                  <FaWallet className="text-4xl text-gray-700 mx-auto mb-3" />
+                  <p className="text-gray-600 text-sm">No tokens found.</p>
+                </div>
+              ) : (
+                <div>
+                  <div className="grid grid-cols-3 gap-4 px-6 py-3 border-b border-white/10 bg-white/[0.02]">
+                    <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider">Token</p>
+                    <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider">Name</p>
+                    <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider text-right">Balance</p>
+                  </div>
+                  {tokens.map((token, i) => (
+                    <div
+                      key={token.address}
+                      className={`grid grid-cols-3 gap-4 px-6 py-4 hover:bg-white/[0.03] transition-colors ${
+                        i !== tokens.length - 1 ? "border-b border-white/5" : ""
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {token.logo ? (
+                          <Image
+                            src={token.logo}
+                            alt={token.symbol}
+                            width={28}
+                            height={28}
+                            className="rounded-full"
+                          />
+                        ) : (
+                          <div className="w-7 h-7 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 text-xs font-bold">
+                            {token.symbol.slice(0, 2)}
+                          </div>
+                        )}
+                        <span className="text-white text-sm font-semibold">
+                          {token.symbol}
+                        </span>
+                      </div>
+                      <p className="text-gray-400 text-sm self-center truncate">
+                        {token.name}
+                      </p>
+                      <p className="text-white text-sm font-mono text-right self-center">
+                        {token.balance}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* NFTs Tab */}
+          {activeTab === "nfts" && (
+            <div>
+              {nfts.length === 0 ? (
+                <div className="rounded-2xl bg-white/[0.03] border border-white/10 text-center py-16">
+                  <FaImage className="text-4xl text-gray-700 mx-auto mb-3" />
+                  <p className="text-gray-600 text-sm">No NFTs found.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {nfts.map((nft) => (
+                    <div
+                      key={`${nft.contractAddress}-${nft.tokenId}`}
+                      className="rounded-2xl bg-white/[0.03] border border-white/10 hover:border-white/20 overflow-hidden transition-all duration-200 group"
+                    >
+                      <div className="relative w-full aspect-square bg-white/5">
+                        {nft.image ? (
+                          <Image
+                            src={nft.image}
+                            alt={nft.name}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <FaImage className="text-gray-700 text-3xl" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-3">
+                        <p className="text-white text-sm font-semibold truncate">
+                          {nft.name}
+                        </p>
+                        <p className="text-gray-500 text-xs truncate mt-0.5">
+                          {nft.collection}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
         </div>
       </section>
-
       <Footer />
     </main>
   );

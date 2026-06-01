@@ -170,7 +170,7 @@ export default function AdminPage() {
             <div className="rounded-2xl bg-white/[0.03] border border-white/10 overflow-hidden">
 
               {/* Table Header */}
-              <div className="grid grid-cols-4 gap-4 px-6 py-3 border-b border-white/10 bg-white/[0.02]">
+              <div className="grid grid-cols-5 gap-4 px-6 py-3 border-b border-white/10 bg-white/[0.02]">
                 <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider">
                   Wallet Address
                 </p>
@@ -182,6 +182,9 @@ export default function AdminPage() {
                 </p>
                 <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider">
                   Logins
+                </p>
+                <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider">
+                  Assets
                 </p>
               </div>
 
@@ -197,19 +200,24 @@ export default function AdminPage() {
                 users.map((user, i) => (
                   <div
                     key={user._id}
-                    className={`grid grid-cols-4 gap-4 px-6 py-4 hover:bg-white/[0.03] transition-colors duration-200 ${
+                    className={`grid grid-cols-5 gap-4 px-6 py-4 hover:bg-white/[0.03] transition-colors duration-200 ${
                       i !== users.length - 1 ? "border-b border-white/5" : ""
                     }`}
                   >
+                    {/* Address */}
                     <div className="flex items-center gap-2 min-w-0">
                       <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex-shrink-0" />
                       <span className="text-white text-sm font-mono truncate">
                         {shortAddress(user.address)}
                       </span>
                     </div>
+
+                    {/* First Seen */}
                     <p className="text-gray-400 text-xs self-center">
                       {formatDate(user.createdAt)}
                     </p>
+
+                    {/* Last Login */}
                     <div className="self-center">
                       <p className="text-gray-400 text-xs">
                         {formatDate(user.lastLogin)}
@@ -218,10 +226,24 @@ export default function AdminPage() {
                         {timeAgo(user.lastLogin)}
                       </p>
                     </div>
+
+                    {/* Login Count */}
                     <div className="self-center">
                       <span className="px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold">
                         {user.loginCount}x
                       </span>
+                    </div>
+
+                    {/* View Assets Button */}
+                    <div className="self-center">
+                      <button
+                        onClick={() =>
+                          router.push(`/admin/wallet/${user.address}`)
+                        }
+                        className="text-xs text-blue-400 hover:text-blue-300 border border-blue-500/20 hover:border-blue-500/40 px-3 py-1.5 rounded-full transition-all duration-200"
+                      >
+                        View Assets
+                      </button>
                     </div>
                   </div>
                 ))
