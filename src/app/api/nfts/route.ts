@@ -24,14 +24,27 @@ export async function GET(req: NextRequest) {
   }
 
   const address = queryAddress || session.address;
-  const alchemyUrl = process.env.ALCHEMY_API_URL;
-  const baseUrl = alchemyUrl!.replace("/v2/", "/nft/v3/");
+  const alchemyUrl = process.env.ALCHEMY_API_URL!;
+
+  // Extract API key and build NFT endpoint correctly
+  const apiKey = alchemyUrl.split("/v2/")[1];
+  const nftBaseUrl = `https://eth-mainnet.g.alchemy.com/nft/v3/${apiKey}`;
 
   try {
     const res = await fetch(
-      `${baseUrl}/getNFTsForOwner?owner=${address}&withMetadata=true&pageSize=9`
+      `${nftBaseUrl}/getNFTsForOwner?owner=${address}&withMetadata=true&pageSize=9`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      }
     );
+
     const data = await res.json();
+
+    if (!res.ok) {
+      console.error("NFT API error:", data);
+      return NextResponse.json({ nfts: [] });
+    }
 
     const nfts = (data.ownedNfts || []).map((nft: any) => ({
       tokenId: nft.tokenId,
@@ -48,9 +61,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ nfts });
   } catch (error) {
     console.error("NFT fetch error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch NFTs" },
-      { status: 500 }
-    );
+    return NextResponse.json({ nfts: [] });
   }
 }

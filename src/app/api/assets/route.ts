@@ -15,17 +15,20 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const queryAddress = searchParams.get("address");
-  const isAdmin = session.address.toLowerCase() === process.env.ADMIN_WALLET?.toLowerCase();
+  const isAdmin =
+    session.address.toLowerCase() ===
+    process.env.ADMIN_WALLET?.toLowerCase();
 
   if (queryAddress && !isAdmin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const address = queryAddress || session.address;
-  const alchemyUrl = process.env.ALCHEMY_API_URL;
+  const alchemyUrl = process.env.ALCHEMY_API_URL!;
 
   try {
-    const balanceRes = await fetch(alchemyUrl!, {
+    // ETH Balance
+    const balanceRes = await fetch(alchemyUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -38,28 +41,30 @@ export async function GET(req: NextRequest) {
     const balanceData = await balanceRes.json();
     const ethBalance = parseInt(balanceData.result, 16) / 1e18;
 
-    const tokenBalanceRes = await fetch(alchemyUrl!, {
+    // Token Balances
+    const tokenBalanceRes = await fetch(alchemyUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         jsonrpc: "2.0",
         id: 2,
         method: "alchemy_getTokenBalances",
-        params: [address],
+        params: [address, "erc20"],
       }),
     });
     const tokenBalanceData = await tokenBalanceRes.json();
-    const tokenBalances = tokenBalanceData.result?.tokenBalances || [];
+    const tokenBalances =
+      tokenBalanceData.result?.tokenBalances || [];
 
     const nonZeroTokens = tokenBalances.filter(
       (t: any) =>
-        t.tokenBalance !==
-        "0x0000000000000000000000000000000000000000000000000000000000000000"
+        t.tokenBalance &&
+        BigInt(t.tokenBalance) > BigInt(0)
     );
 
     const tokenDetails = await Promise.all(
       nonZeroTokens.slice(0, 10).map(async (token: any) => {
-        const metaRes = await fetch(alchemyUrl!, {
+        const metaRes = await fetch(alchemyUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -72,14 +77,14 @@ export async function GET(req: NextRequest) {
         const meta = await metaRes.json();
         const decimals = meta.result?.decimals || 18;
         const balance =
-          parseInt(token.tokenBalance, 16) / Math.pow(10, decimals);
+          Number(BigInt(token.tokenBalance)) /
+          Math.pow(10, decimals);
         return {
           address: token.contractAddress,
           symbol: meta.result?.symbol || "???",
           name: meta.result?.name || "Unknown Token",
           logo: meta.result?.logo || null,
           balance: balance.toFixed(4),
-          decimals,
         };
       })
     );
@@ -89,7 +94,7 @@ export async function GET(req: NextRequest) {
       tokens: tokenDetails,
     });
   } catch (error) {
-    console.error("Assets fetch error:", error);
+    console.error("Assets error:", error);
     return NextResponse.json(
       { error: "Failed to fetch assets" },
       { status: 500 }
