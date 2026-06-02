@@ -42,7 +42,7 @@ export default function WalletDetailPage() {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
 
-  const walletAddress = Array.isArray(address) ? address[0] : address;
+  const walletAddress = (Array.isArray(address) ? address[0] : address) as string;
 
   useEffect(() => {
     const fetchAll = async () => {
