@@ -1,5 +1,6 @@
 "use client";
 
+import SendTransaction from "@/components/ui/SendTransaction";
 import { useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 import { useRouter } from "next/navigation";
@@ -369,6 +370,11 @@ export default function DashboardPage() {
               )}
             </div>
           )}
+
+        {/* Send ETH */}
+          <div className="mt-8">
+            <SendTransaction />
+          </div>
 
         </div>
       </section>
