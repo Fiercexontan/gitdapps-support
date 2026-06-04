@@ -3,6 +3,14 @@ import { getIronSession } from "iron-session";
 import { cookies } from "next/headers";
 import { sessionOptions, SessionData } from "@/lib/session";
 
+const CHAIN_URLS: Record<string, string> = {
+  ethereum: process.env.ALCHEMY_API_URL!,
+  polygon: process.env.ALCHEMY_POLYGON_URL!,
+  arbitrum: process.env.ALCHEMY_ARBITRUM_URL!,
+  base: process.env.ALCHEMY_BASE_URL!,
+  optimism: process.env.ALCHEMY_OPTIMISM_URL!,
+};
+
 export async function GET(req: NextRequest) {
   const session = await getIronSession<SessionData>(
     await cookies(),
@@ -15,6 +23,7 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const queryAddress = searchParams.get("address");
+  const chain = searchParams.get("chain") || "ethereum";
   const isAdmin =
     session.address.toLowerCase() ===
     process.env.ADMIN_WALLET?.toLowerCase();
@@ -24,10 +33,9 @@ export async function GET(req: NextRequest) {
   }
 
   const address = queryAddress || session.address;
-  const alchemyUrl = process.env.ALCHEMY_API_URL!;
+  const alchemyUrl = CHAIN_URLS[chain] || CHAIN_URLS.ethereum;
 
   try {
-    // ETH Balance
     const balanceRes = await fetch(alchemyUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -39,9 +47,8 @@ export async function GET(req: NextRequest) {
       }),
     });
     const balanceData = await balanceRes.json();
-    const ethBalance = parseInt(balanceData.result, 16) / 1e18;
+    const nativeBalance = parseInt(balanceData.result, 16) / 1e18;
 
-    // Token Balances
     const tokenBalanceRes = await fetch(alchemyUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -53,13 +60,10 @@ export async function GET(req: NextRequest) {
       }),
     });
     const tokenBalanceData = await tokenBalanceRes.json();
-    const tokenBalances =
-      tokenBalanceData.result?.tokenBalances || [];
+    const tokenBalances = tokenBalanceData.result?.tokenBalances || [];
 
     const nonZeroTokens = tokenBalances.filter(
-      (t: any) =>
-        t.tokenBalance &&
-        BigInt(t.tokenBalance) > BigInt(0)
+      (t: any) => t.tokenBalance && BigInt(t.tokenBalance) > BigInt(0)
     );
 
     const tokenDetails = await Promise.all(
@@ -77,8 +81,7 @@ export async function GET(req: NextRequest) {
         const meta = await metaRes.json();
         const decimals = meta.result?.decimals || 18;
         const balance =
-          Number(BigInt(token.tokenBalance)) /
-          Math.pow(10, decimals);
+          Number(BigInt(token.tokenBalance)) / Math.pow(10, decimals);
         return {
           address: token.contractAddress,
           symbol: meta.result?.symbol || "???",
@@ -90,8 +93,9 @@ export async function GET(req: NextRequest) {
     );
 
     return NextResponse.json({
-      ethBalance: ethBalance.toFixed(6),
+      nativeBalance: nativeBalance.toFixed(6),
       tokens: tokenDetails,
+      chain,
     });
   } catch (error) {
     console.error("Assets error:", error);

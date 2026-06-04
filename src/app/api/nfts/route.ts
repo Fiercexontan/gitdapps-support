@@ -3,6 +3,22 @@ import { getIronSession } from "iron-session";
 import { cookies } from "next/headers";
 import { sessionOptions, SessionData } from "@/lib/session";
 
+const CHAIN_URLS: Record<string, string> = {
+  ethereum: process.env.ALCHEMY_API_URL!,
+  polygon: process.env.ALCHEMY_POLYGON_URL!,
+  arbitrum: process.env.ALCHEMY_ARBITRUM_URL!,
+  base: process.env.ALCHEMY_BASE_URL!,
+  optimism: process.env.ALCHEMY_OPTIMISM_URL!,
+};
+
+const NFT_HOSTS: Record<string, string> = {
+  ethereum: "eth-mainnet.g.alchemy.com",
+  polygon: "polygon-mainnet.g.alchemy.com",
+  arbitrum: "arb-mainnet.g.alchemy.com",
+  base: "base-mainnet.g.alchemy.com",
+  optimism: "opt-mainnet.g.alchemy.com",
+};
+
 export async function GET(req: NextRequest) {
   const session = await getIronSession<SessionData>(
     await cookies(),
@@ -15,6 +31,7 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const queryAddress = searchParams.get("address");
+  const chain = searchParams.get("chain") || "ethereum";
   const isAdmin =
     session.address.toLowerCase() ===
     process.env.ADMIN_WALLET?.toLowerCase();
@@ -24,25 +41,18 @@ export async function GET(req: NextRequest) {
   }
 
   const address = queryAddress || session.address;
-  const alchemyUrl = process.env.ALCHEMY_API_URL!;
-
-  // Extract API key and build NFT endpoint correctly
+  const alchemyUrl = CHAIN_URLS[chain] || CHAIN_URLS.ethereum;
   const apiKey = alchemyUrl.split("/v2/")[1];
-  const nftBaseUrl = `https://eth-mainnet.g.alchemy.com/nft/v3/${apiKey}`;
+  const nftHost = NFT_HOSTS[chain] || NFT_HOSTS.ethereum;
+  const nftBaseUrl = `https://${nftHost}/nft/v3/${apiKey}`;
 
   try {
     const res = await fetch(
-      `${nftBaseUrl}/getNFTsForOwner?owner=${address}&withMetadata=true&pageSize=9`,
-      {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-      }
+      `${nftBaseUrl}/getNFTsForOwner?owner=${address}&withMetadata=true&pageSize=9`
     );
-
     const data = await res.json();
 
     if (!res.ok) {
-      console.error("NFT API error:", data);
       return NextResponse.json({ nfts: [] });
     }
 
@@ -58,9 +68,9 @@ export async function GET(req: NextRequest) {
       contractAddress: nft.contract?.address,
     }));
 
-    return NextResponse.json({ nfts });
+    return NextResponse.json({ nfts, chain });
   } catch (error) {
-    console.error("NFT fetch error:", error);
+    console.error("NFT error:", error);
     return NextResponse.json({ nfts: [] });
   }
 }
