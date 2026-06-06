@@ -1,5 +1,6 @@
 "use client";
 
+import PortfolioSummary from "@/components/ui/PortfolioSummary";
 import { useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 import Navbar from "@/components/layout/Navbar";
@@ -261,6 +262,15 @@ export default function DashboardPage() {
             activeChain={activeChain}
             onChange={handleChainChange}
           />
+
+          {/* Portfolio Summary */}
+          {!loadingAssets && (
+            <PortfolioSummary
+              nativeBalance={nativeBalance || "0"}
+              tokens={tokens}
+              chain={activeChain}
+            />
+          )}
 
           {/* Refresh */}
           <div className="flex items-center justify-between mb-4">
