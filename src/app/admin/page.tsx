@@ -61,8 +61,7 @@ export default function AdminPage() {
         return;
       }
       if (res.status === 403) {
-        setError("Access denied. Admin only.");
-        setLoading(false);
+        router.push("/");
         return;
       }
       const data = await res.json();
@@ -77,6 +76,14 @@ export default function AdminPage() {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  if (loading && users.length === 0) {
+    return (
+      <main className="min-h-screen bg-black text-white flex items-center justify-center">
+        <FaCircleNotch className="animate-spin text-blue-500 text-3xl" />
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-black text-white">
