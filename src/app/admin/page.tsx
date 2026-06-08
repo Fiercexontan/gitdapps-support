@@ -49,6 +49,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [authorized, setAuthorized] = useState(false); // NEW: track auth state
   const router = useRouter();
 
   const fetchUsers = async () => {
@@ -56,11 +57,7 @@ export default function AdminPage() {
     setError("");
     try {
       const res = await fetch("/api/admin");
-      if (res.status === 401) {
-        router.push("/");
-        return;
-      }
-      if (res.status === 403) {
+      if (res.status === 401 || res.status === 403) {
         router.push("/");
         return;
       }
@@ -73,11 +70,42 @@ export default function AdminPage() {
     }
   };
 
+  // ✅ SESSION PRE-CHECK — runs before anything renders
   useEffect(() => {
-    fetchUsers();
+    const checkSession = async () => {
+      try {
+        const res = await fetch("/api/auth/session");
+        const session = await res.json();
+
+        // Not logged in at all → redirect home
+        if (!session.isLoggedIn || !session.address) {
+          router.push("/");
+          return;
+        }
+
+        // Logged in but not admin → redirect home
+        const adminRes = await fetch("/api/admin");
+        if (adminRes.status === 401 || adminRes.status === 403) {
+          router.push("/");
+          return;
+        }
+
+        // Passed both checks — allow render and load users
+        const data = await adminRes.json();
+        setUsers(data.users || []);
+        setAuthorized(true);
+      } catch {
+        router.push("/");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkSession();
   }, []);
 
-  if (loading && users.length === 0) {
+  // Show spinner while checking auth — never flash the page to non-admins
+  if (loading || !authorized) {
     return (
       <main className="min-h-screen bg-black text-white flex items-center justify-center">
         <FaCircleNotch className="animate-spin text-blue-500 text-3xl" />
@@ -155,13 +183,6 @@ export default function AdminPage() {
                   {users.reduce((acc, u) => acc + u.loginCount, 0)}
                 </p>
               </div>
-            </div>
-          )}
-
-          {/* Loading */}
-          {loading && (
-            <div className="flex items-center justify-center py-20">
-              <FaCircleNotch className="animate-spin text-blue-500 text-3xl" />
             </div>
           )}
 

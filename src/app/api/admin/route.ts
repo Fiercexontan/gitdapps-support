@@ -15,7 +15,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const adminWallet = process.env.ADMIN_WALLET?.toLowerCase();
+  const adminWallet = process.env.ADMIN_WALLET?.trim().toLowerCase();
 
   if (session.address.toLowerCase() !== adminWallet) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
