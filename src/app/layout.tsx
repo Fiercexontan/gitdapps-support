@@ -3,6 +3,7 @@ import { Geist } from "next/font/google";
 import "./globals.css";
 import Providers from "@/lib/providers";
 import TawkChat from "@/components/layout/TawkChat";
+import { Analytics } from "@vercel/analytics/react";
 
 const geist = Geist({ subsets: ["latin"] });
 
@@ -21,6 +22,7 @@ export default function RootLayout({
       <body className={`${geist.className} bg-black antialiased`}>
         <Providers>{children}</Providers>
         <TawkChat />
+        <Analytics />
       </body>
     </html>
   );
