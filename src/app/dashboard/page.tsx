@@ -18,6 +18,10 @@ import {
   FaEthereum,
   FaImage,
   FaArrowsRotate,
+  FaArrowUp,
+  FaArrowDown,
+  FaArrowUpRightFromSquare,
+  FaClockRotateLeft,
 } from "react-icons/fa6";
 
 interface SessionData {
@@ -41,6 +45,19 @@ interface NFT {
   contractAddress: string;
 }
 
+interface Transaction {
+  hash: string;
+  from: string;
+  to: string;
+  value: number | null;
+  asset: string | null;
+  category: string;
+  blockNum: string;
+  timestamp: string | null;
+  direction: "sent" | "received";
+  explorerUrl: string;
+}
+
 const chainNativeSymbol: Record<string, string> = {
   ethereum: "ETH",
   polygon: "MATIC",
@@ -61,6 +78,16 @@ function shortAddress(addr: string) {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
+function formatTxDate(timestamp: string | null) {
+  if (!timestamp) return "—";
+  return new Date(timestamp).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default function DashboardPage() {
   const { address, isConnected } = useAccount();
   const { signIn, signOut, loading, error } = useSIWE();
@@ -72,7 +99,9 @@ export default function DashboardPage() {
   const [tokens, setTokens] = useState<Token[]>([]);
   const [nfts, setNfts] = useState<NFT[]>([]);
   const [loadingAssets, setLoadingAssets] = useState(false);
-  const [activeTab, setActiveTab] = useState<"tokens" | "nfts">("tokens");
+  const [activeTab, setActiveTab] = useState<"tokens" | "nfts" | "history">("tokens");
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loadingTx, setLoadingTx] = useState(false);
 
   useEffect(() => {
     const fetchSession = async () => {
@@ -89,6 +118,12 @@ export default function DashboardPage() {
       fetchAssets(activeChain);
     }
   }, [session, activeChain]);
+
+  useEffect(() => {
+    if (session?.isLoggedIn && activeTab === "history") {
+      fetchTransactions(activeChain);
+    }
+  }, [activeTab, activeChain]);
 
   const fetchAssets = async (chain: string) => {
     setLoadingAssets(true);
@@ -109,6 +144,20 @@ export default function DashboardPage() {
       console.error("Failed to fetch assets");
     } finally {
       setLoadingAssets(false);
+    }
+  };
+
+  const fetchTransactions = async (chain: string) => {
+    setLoadingTx(true);
+    setTransactions([]);
+    try {
+      const res = await fetch(`/api/transactions?chain=${chain}`);
+      const data = await res.json();
+      setTransactions(data.transactions || []);
+    } catch {
+      console.error("Failed to fetch transactions");
+    } finally {
+      setLoadingTx(false);
     }
   };
 
@@ -272,7 +321,7 @@ export default function DashboardPage() {
             />
           )}
 
-          {/* Refresh */}
+          {/* Tabs + Refresh */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <button
@@ -295,17 +344,34 @@ export default function DashboardPage() {
               >
                 NFTs
               </button>
+              <button
+                onClick={() => setActiveTab("history")}
+                className={`px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
+                  activeTab === "history"
+                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
+                    : "bg-white/5 text-gray-400 hover:text-white border border-white/10"
+                }`}
+              >
+                <FaClockRotateLeft className="text-xs" />
+                History
+              </button>
             </div>
             <button
-              onClick={() => fetchAssets(activeChain)}
+              onClick={() => {
+                if (activeTab === "history") {
+                  fetchTransactions(activeChain);
+                } else {
+                  fetchAssets(activeChain);
+                }
+              }}
               className="flex items-center gap-2 text-gray-400 hover:text-white border border-white/10 hover:border-white/30 px-4 py-2 rounded-full text-xs transition-all"
             >
-              <FaArrowsRotate className={loadingAssets ? "animate-spin" : ""} />
+              <FaArrowsRotate className={loadingAssets || loadingTx ? "animate-spin" : ""} />
               Refresh
             </button>
           </div>
 
-          {/* Tokens */}
+          {/* Tokens Tab */}
           {activeTab === "tokens" && (
             <div className="rounded-2xl bg-white/[0.03] border border-white/10 overflow-hidden">
               {loadingAssets ? (
@@ -352,7 +418,7 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* NFTs */}
+          {/* NFTs Tab */}
           {activeTab === "nfts" && (
             <div>
               {loadingAssets ? (
@@ -389,6 +455,99 @@ export default function DashboardPage() {
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* History Tab */}
+          {activeTab === "history" && (
+            <div className="rounded-2xl bg-white/[0.03] border border-white/10 overflow-hidden">
+              {loadingTx ? (
+                <div className="flex items-center justify-center py-16">
+                  <FaCircleNotch className="animate-spin text-blue-500 text-2xl" />
+                </div>
+              ) : transactions.length === 0 ? (
+                <div className="text-center py-16">
+                  <FaClockRotateLeft className="text-4xl text-gray-700 mx-auto mb-3" />
+                  <p className="text-gray-600 text-sm">
+                    No transactions on {chainNames[activeChain]}.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {/* Table Header */}
+                  <div className="grid grid-cols-5 gap-4 px-6 py-3 border-b border-white/10 bg-white/[0.02]">
+                    <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider">Type</p>
+                    <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider">Asset</p>
+                    <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider">Amount</p>
+                    <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider">From / To</p>
+                    <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider">Date</p>
+                  </div>
+
+                  {/* Table Rows */}
+                  {transactions.map((tx, i) => (
+                    <div
+                      key={`${tx.hash}-${i}`}
+                      className={`grid grid-cols-5 gap-4 px-6 py-4 hover:bg-white/[0.03] transition-colors ${
+                        i !== transactions.length - 1 ? "border-b border-white/5" : ""
+                      }`}
+                    >
+                      {/* Type */}
+                      <div className="flex items-center gap-2">
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs ${
+                          tx.direction === "sent"
+                            ? "bg-red-500/10 border border-red-500/20 text-red-400"
+                            : "bg-green-500/10 border border-green-500/20 text-green-400"
+                        }`}>
+                          {tx.direction === "sent" ? <FaArrowUp /> : <FaArrowDown />}
+                        </div>
+                        <span className={`text-xs font-semibold capitalize ${
+                          tx.direction === "sent" ? "text-red-400" : "text-green-400"
+                        }`}>
+                          {tx.direction}
+                        </span>
+                      </div>
+
+                      {/* Asset */}
+                      <p className="text-white text-sm font-semibold self-center">
+                        {tx.asset || "—"}
+                      </p>
+
+                      {/* Amount */}
+                      <p className="text-white text-sm font-mono self-center">
+                        {tx.value !== null ? tx.value.toFixed(4) : "—"}
+                      </p>
+
+                      {/* From / To */}
+                      <div className="self-center">
+                        <p className="text-gray-500 text-xs">
+                          {tx.direction === "sent" ? "To:" : "From:"}
+                        </p>
+                        <p className="text-gray-300 text-xs font-mono mt-0.5">
+                          {tx.direction === "sent"
+                            ? tx.to ? shortAddress(tx.to) : "—"
+                            : tx.from ? shortAddress(tx.from) : "—"}
+                        </p>
+                      </div>
+
+                      {/* Date + Explorer Link */}
+                      <div className="self-center flex items-center justify-between">
+                        <p className="text-gray-400 text-xs">
+                          {formatTxDate(tx.timestamp)}
+                        </p>
+                        <a
+                          href={tx.explorerUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-400 hover:text-blue-300 transition-colors ml-2"
+                          title="View on Explorer"
+                        >
+                          <FaArrowUpRightFromSquare className="text-xs" />
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </>
               )}
             </div>
           )}
